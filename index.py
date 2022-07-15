@@ -1,10 +1,12 @@
 
 import json
+from operator import contains
 import os
 import shutil
 import sys
 from time import time
 from dataclasses import dataclass
+import traceback
 
 @dataclass
 class Statistics:
@@ -33,9 +35,11 @@ class Statistics:
         print("Er zijn {} zaak types.".format(self.zaak_types))
         print("Er zijn {} zaken.".format(self.zaken))
         print("De zaken hebben {} files.".format(self.files))
-        print("Het indexeren heeft {} seconden geduurd (dat is {} uur).".format(duration, duration/60))
+        print("Het indexeren heeft {} seconden geduurd (dat is {} uur).".format(duration, duration/3600))
         print("Het indexeren van {} zaken is fout gegaan.".format(self.fails))
         print("\n\n")
+
+
 class Indexer:
 
     def __init__(self, dump_root, zaak_type) -> None:
@@ -52,6 +56,9 @@ class Indexer:
 
         dirs = os.listdir(dump_root)
         for dir in dirs:
+            if contains(dir, 'Zoekmap'):
+                print('Skip zoekmap')
+                continue
             if self.zaak_type == None or (self.zaak_type != None and dir == self.zaak_type):
                 path = os.path.join(dump_root, dir)
                 self.create_zaak_index(path, dir)
@@ -79,7 +86,7 @@ class Indexer:
                 self.failed.write('{},{},{}\n'.format(entry, str(e), path))
                 self.failed.flush()
                 self.stats.new_fail()
-                print(e)
+                print(traceback.format_exc())
         print("Klaar met zaak type {}\n".format(zaak_path))
 
     def process_entry(self, entry, path):
@@ -110,22 +117,30 @@ class Indexer:
         firstname = ''
         tussenvoegsel = ''
         lastname = ''
-        toelichting = metadata['toelichting']
+        toelichting = ''
+        bsn = ''
 
-        if 'initiator' in metadata and  'person' in metadata['initiator']:
-            firstname = metadata['initiator']['person']['firstNames']
-            lastname = metadata['initiator']['person']['lastName']
-            tussenvoegsel = metadata['initiator']['person']['lastNamePrefix']
-            if tussenvoegsel == None: 
-                tussenvoegsel = ''
-            
-        if 'employee' in metadata['initiator']:
-            toelichting += ' (medewerker)'
-        elif 'organization' in metadata['initiator']:
-            toelichting += ' (organization)'
+        if self.is_filled(metadata, 'toelichting'):
+            toelichting = metadata['toelichting']
 
-        return '{},{},{},{}'.format(toelichting, firstname, tussenvoegsel, lastname)
-        
+        if self.is_filled(metadata, 'initiator'):
+            if self.is_filled(metadata['initiator'], 'person'): 
+                firstname = metadata['initiator']['person']['firstNames']
+                lastname = metadata['initiator']['person']['lastName']
+                bsn = metadata['initiator']['person']['citizenNumber']
+                tussenvoegsel = metadata['initiator']['person']['lastNamePrefix']
+                if tussenvoegsel == None: 
+                    tussenvoegsel = ''
+                
+            if 'employee' in metadata['initiator']:
+                toelichting += ' (medewerker)'
+            elif 'organization' in metadata['initiator']:
+                toelichting += ' (organization)'
+
+        return '{},{},{},{},{}'.format(toelichting, bsn, firstname, tussenvoegsel, lastname)
+
+    def is_filled(self, dict, tag):
+        return tag in dict and dict[tag] != None
 
     def load_metadata(self, path, filename):
         metadata_file = os.path.join(path, filename)
@@ -150,7 +165,7 @@ class Indexer:
             pass
 
         csv = open(csv_file, 'w')
-        csv.write('datum,toelichting,voornamen,tussenvoegsel,achternaam,locatie\n')
+        csv.write('datum,toelichting,bsn,voornamen,tussenvoegsel,achternaam,locatie\n')
         return csv
     
 
