@@ -108,19 +108,25 @@ class Indexer:
 
 
     def get_name(self, metadata):
+        firstname = ''
+        tussenvoegsel = ''
+        lastname = ''
+        toelichting = metadata['toelichting']
+
         if 'initiator' in metadata and  'person' in metadata['initiator']:
             firstname = metadata['initiator']['person']['firstNames']
             lastname = metadata['initiator']['person']['lastName']
             tussenvoegsel = metadata['initiator']['person']['lastNamePrefix']
-            if tussenvoegsel == None:
-                return firstname + ' ' + lastname
-            return firstname + ' ' + tussenvoegsel + ' ' + lastname
-        elif 'employee' in metadata['initiator']:
-            return metadata['toelichting'] + ' (medewerker)'
+            if tussenvoegsel == None: 
+                tussenvoegsel = ''
+            
+        if 'employee' in metadata['initiator']:
+            toelichting += ' (medewerker)'
         elif 'organization' in metadata['initiator']:
-            return metadata['toelichting'] + ' (organization)'
-        else:
-            return metadata['toelichting']
+            toelichting += ' (organization)'
+
+        return '{},{},{},{}'.format(toelichting, firstname, tussenvoegsel, lastname)
+        
 
     def load_metadata(self, path, filename):
         metadata_file = os.path.join(path, filename)
@@ -145,7 +151,7 @@ class Indexer:
             pass
 
         csv = open(csv_file, 'w')
-        csv.write('datum,initiator,locatie\n')
+        csv.write('datum,toelichting,voornamen,tussenvoegsel,achternaam,locatie\n')
         return csv
     
 
