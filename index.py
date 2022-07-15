@@ -29,7 +29,7 @@ class Statistics:
         self.fails += 1
 
     def print_statistics(self):
-        duration = (time() - self.time) / 1000
+        duration = (time() - self.time)
         print("Dump statistics:")
         print("Er zijn {} zaak types.".format(self.zaak_types))
         print("Er zijn {} zaken.".format(self.zaken))
@@ -91,8 +91,9 @@ class Indexer:
         files = os.listdir(path)
         files = filter(lambda file: file.endswith('.bin'), files)
         for file in files:
+            self.stats.new_file()
             filename = file[:-3] + 'meta'
-            print(filename)
+            # print(filename)
             metadata = self.load_metadata(path, filename)
             original_filename_extension = metadata['bestandsnaam'][-3:]
             new_filename = file[:-3] + original_filename_extension
